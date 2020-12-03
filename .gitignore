@@ -1,0 +1,64 @@
+######################
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*~
+.Trashes
+.directory
+.DS_Store
+
+
+######################
+# General            #
+######################
+*.bak
+cache*
+*.db*
+*.log
+*.org
+*.orig
+*.tmp
+*.temp
+*.zip
+*.tar
+*.gz
+
+######################
+# Certificates etc
+######################
+*.pem
+*.cert
+*.crt
+*.key
+
+######################
+# Terraform
+######################
+**/.terraform/*
+# *.tfstate
+# *.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+######################
+# mariadb            #
+######################
+# Saved as zip
+/mariadb
+
+######################
+# Wordpress          #
+######################
+# Saved as zip
+/wordpress*
+*.wpress

@@ -1,0 +1,96 @@
+##############################################################################
+# Moved to terraform
+##############################################################################
+
+
+
+# https://docs.microsoft.com/en-us/azure/aks/azure-disk-customer-managed-keys
+# az disk list | jq -r '.[]|select((.tags["kubernetes.io-created-for-pvc-namespace"]=="tenant-a-test-no-opa") and (.tags["kubernetes.io-created-for-pvc-name"]=="test-pvc"))'# apiVersion: storage.k8s.io/v1
+# kubectl delete pv <pv_name> --grace-period=0 --force
+# kubectl patch pv <pv_name> -p '{"metadata": {"finalizers": null}}'
+
+##############################################################################
+# Disks
+##############################################################################
+# kind: StorageClass
+# apiVersion: storage.k8s.io/v1
+# metadata:
+#   name: mgt-k8s-disk-hdd-delete
+# provisioner: kubernetes.io/azure-disk
+# reclaimPolicy: Delete
+# volumeBindingMode: Immediate
+# allowVolumeExpansion: true
+# parameters:
+#   cachingmode: ReadOnly
+#   storageaccounttype: Premium_LRS
+#   diskEncryptionSetID: "/subscriptions/622b4053-790d-4938-9c89-35a1f3ab0137/resourceGroups/K8S_WEU_DEV_3.0_1/providers/Microsoft.Compute/diskEncryptionSets/aks-disks-encryption-key-set"
+#   kind: Managed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---
+# kind: StorageClass
+# apiVersion: storage.k8s.io/v1
+# metadata:
+#   name: mgt-k8s-disk-hdd-retain
+# provisioner: kubernetes.io/azure-disk
+# reclaimPolicy: Retain
+# volumeBindingMode: Immediate
+# allowVolumeExpansion: true
+# parameters:
+#   cachingmode: ReadOnly
+#   storageaccounttype: Premium_LRS 
+#   kind: Managed
+
+# ---
+# kind: StorageClass
+# apiVersion: storage.k8s.io/v1
+# metadata:
+#   name: mgt-k8s-disk-standard-delete
+# provisioner: kubernetes.io/azure-disk
+# reclaimPolicy: Delete
+# volumeBindingMode: Immediate
+# allowVolumeExpansion: true
+# parameters:
+#   cachingmode: ReadOnly
+#   storageaccounttype: Premium_LRS 
+#   kind: Managed
+
+# ---
+# kind: StorageClass
+# apiVersion: storage.k8s.io/v1
+# metadata:
+#   name: mgt-k8s-disk-standard-retain
+# provisioner: kubernetes.io/azure-disk
+# reclaimPolicy: Retain
+# volumeBindingMode: Immediate
+# allowVolumeExpansion: true
+# parameters:
+#   cachingmode: ReadOnly
+#   storageaccounttype: Premium_LRS 
+#   kind: Managed
+
+# ---
+# ##############################################################################
+# # Shared File Systems (NFS)
+# ##############################################################################
+# apiVersion: storage.k8s.io/v1
+# kind: StorageClass
+# metadata:
+#   name: mgt-k8s-files-delete
+# provisioner: kubernetes.io/azure-file
+# reclaimPolicy: Retain
+# volumeBindingMode: Immediate
+# parameters:
+#   skuName: Premium_LRS

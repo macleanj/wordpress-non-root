@@ -1,0 +1,33 @@
+# https://somedevtips.com/web/wordpress/backup-script-for-wordpress/
+version: '2'
+services:
+  wordpress-fe:
+    container_name: wordpress-fe
+    hostname: wordpress-fe
+    image: bitnami/wordpress:5.5.3
+    volumes:
+      - ./wordpress:/bitnami
+      # - ./wordpress-home:/.nami # Work-around
+    ports:
+      - '80:8080'
+      - '443:8443'
+    depends_on:
+      - wordpress-mariadb
+    environment:
+      - WORDPRESS_USERNAME=admin
+      - WORDPRESS_PASSWORD=admin
+      - MARIADB_HOST=wordpress-mariadb
+      - WORDPRESS_DATABASE_USER=wordpress
+      - WORDPRESS_DATABASE_PASSWORD=admin-secret
+      - WORDPRESS_DATABASE_NAME=wordpress
+  wordpress-mariadb:
+    image: bitnami/mariadb:10.5.8
+    container_name: wordpress-mariadb
+    hostname: wordpress-mariadb
+    volumes:
+      - ./mariadb:/bitnami
+    environment:
+      - MARIADB_ROOT_PASSWORD=admin-secret
+      - MARIADB_PASSWORD=admin-secret
+      - MARIADB_USER=wordpress
+      - MARIADB_DATABASE=wordpress

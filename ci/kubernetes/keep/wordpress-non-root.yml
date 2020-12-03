@@ -1,0 +1,351 @@
+# https://medium.com/@containerum/how-to-deploy-wordpress-and-mysql-on-kubernetes-bda9a3fdd2d5
+# kubectl patch pod/wordpress-fe-5fcbf7f649-nx79w -p '{"metadata":{"finalizers":null}}'
+# find $1 -type f -exec stat --format '%Y :%y %n' "{}" \; | sort -nr | cut -d: -f2- | head
+
+
+#############################################################################
+# Wordpress
+#############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-fe
+  labels:
+    app: wordpress-fe
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      securityContext:
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      # - image: bitnami/wordpress:5.5.3
+      - image: jmaclean/wordpress-non-root-wordpress:5.5.3-1
+        # imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
+        name: wordpress-fe
+        # command: ['sh']
+        # args:
+        # - "-c"
+        # - |
+        #   sleep 5000
+        # # RUN IN CONTAINER: /app-entrypoint.sh httpd -f /opt/bitnami/apache/conf/httpd.conf -DFOREGROUND
+        command: ['sh']
+        args:
+        - "-c"
+        - |
+          cp -Rp /data/wordpress /bitnami/
+          httpd -f /opt/bitnami/apache/conf/httpd.conf -DFOREGROUND
+        # cp -Rp /data/.nami/* /.nami/
+        # chmod -R 777 /.nami/*
+        env:
+        - name: WORDPRESS_USERNAME
+          value: admin
+        - name: WORDPRESS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-pass
+              key: WORDPRESS_PASSWORD
+        - name: MARIADB_HOST
+          value: wordpress-mariadb
+        - name: WORDPRESS_DATABASE_USER
+          value: "wordpress"
+        - name: WORDPRESS_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-pass
+              key: MARIADB_PASSWORD
+        - name: WORDPRESS_DATABASE_NAME
+          value: "wordpress"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          # readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        ports:
+        - containerPort: 8080
+        - containerPort: 8443
+        volumeMounts:
+          - name: vol-tmp
+            mountPath: /tmp
+          # - name: vol-nami-registry
+          #   mountPath: /.nami/registry.json
+          #   subPath: registry.json
+          - name: vol-bitnami-data
+            mountPath: /bitnami
+      volumes:
+        - name: vol-tmp
+          emptyDir: {}
+        # - name: vol-nami-registry
+        #   emptyDir: {}
+        - name: vol-bitnami-data
+          emptyDir: {}
+        # - name: vol-bitnami-data
+        #   persistentVolumeClaim:
+        #     claimName: wordpress-persistent-storage
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: wordpress-fe
+#   labels:
+#     app: wordpress-fe
+# spec:
+#   ports:
+#     - name: http
+#       port: 80
+#       protocol: TCP
+#       targetPort: 8080
+#     - name: https
+#       port: 84
+#       protocol: TCP
+#       targetPort: 8443
+#   selector:
+#     app: wordpress
+#     tier: frontend
+
+# ---
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   name: wordpress-ingress
+#   annotations:
+#     kubernetes.io/ingress.class: "azure/application-gateway"
+#     appgw.ingress.kubernetes.io/appgw-ssl-certificate: "AzureCrossLogicConsulting"
+#     appgw.ingress.kubernetes.io/ssl-redirect: "true"
+# spec:
+#   rules:
+#   - host: "wordpress-dev.azure.crosslogic-consulting.com"
+#     http:
+#       paths:
+#       - path: /
+#         backend:
+#           serviceName: wordpress-fe
+#           servicePort: 80
+# ---
+
+
+# #############################################################################
+# # MariaDB
+# #############################################################################
+# apiVersion: v1
+# data:
+#   my.cnf: |
+#     [mysqld]
+#     skip_name_resolve
+#     explicit_defaults_for_timestamp
+#     basedir=/opt/bitnami/mariadb
+#     port=3306
+#     tmpdir=/opt/bitnami/mariadb/tmp
+#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
+#     pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
+#     max_allowed_packet=16M
+#     bind_address=0.0.0.0
+#     log_error=/opt/bitnami/mariadb/logs/mysqld.log
+#     character_set_server=utf8
+#     collation_server=utf8_general_ci
+#     plugin_dir=/opt/bitnami/mariadb/plugin
+
+#     [client]
+#     port=3306
+#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
+#     default_character_set=UTF8
+#     plugin_dir=/opt/bitnami/mariadb/plugin
+
+#     [manager]
+#     port=3306
+#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
+#     pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
+# kind: ConfigMap
+# metadata:
+#   creationTimestamp: null
+#   labels:
+#     app: mariadb
+#   name: mariadb-config
+
+# ---
+# # echo -n "<secret>" | openssl base64 -A
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: mariadb-pass
+# type: Opaque
+# data:
+#   WORDPRESS_PASSWORD: YWRtaW4= # admin
+#   MARIADB_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
+#   MARIADB_ROOT_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
+
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: wordpress-mariadb
+#   labels:
+#     app: wordpress
+# spec:
+#   selector:
+#     matchLabels:
+#       app: wordpress
+#       tier: mariadb
+#   strategy:
+#     type: Recreate
+#   template:
+#     metadata:
+#       labels:
+#         app: wordpress
+#         tier: mariadb
+#     spec:
+#       securityContext:
+#         runAsUser: 1001
+#         fsGroup: 1001
+#       containers:
+#       # - image: bitnami/mariadb:10.5.8
+#       - image: jmaclean/wordpress-non-root-mariadb:10.5.8-1
+#         # imagePullPolicy: Always
+#         imagePullPolicy: IfNotPresent
+#         name: mariadb
+#         # command: ['sh']
+#         # args:
+#         # - "-c"
+#         # - |
+#         #   sleep 5000
+#         # # RUN IN CONTAINER: /opt/bitnami/scripts/mariadb/entrypoint.sh /opt/bitnami/scripts/mariadb/run.sh
+#         # command: ['sh']
+#         # args:
+#         # - "-c"
+#         # - |
+#         #   cp -Rp /data/mariadb/data/* /bitnami/mariadb/data/
+#         #   /opt/bitnami/scripts/mariadb/run.sh
+#         envFrom:
+#         - configMapRef:
+#             name: mariadb-config
+#         - secretRef:
+#             name: mariadb-pass
+#         env:
+#         - name: BITNAMI_DEBUG
+#           value: "true"
+#         - name: MARIADB_USER
+#           value: wordpress
+#         - name: MARIADB_DATABASE
+#           value: wordpress
+#         # - name: MARIADB_ROOT_PASSWORD
+#         #   valueFrom:
+#         #     secretKeyRef:
+#         #       name: mariadb-pass
+#         #       key: password-db-root
+#         # - name: MARIADB_PASSWORD
+#         #   valueFrom:
+#         #     secretKeyRef:
+#         #       name: mariadb-pass
+#         #       key: password-db-wordpress
+#         securityContext:
+#           allowPrivilegeEscalation: false
+#           capabilities:
+#             drop: ["ALL"]
+#           readOnlyRootFilesystem: true
+#         livenessProbe:
+#           exec:
+#             command: ["sh", "-c", "exec mysqladmin status -uroot -p$MARIADB_ROOT_PASSWORD"]
+#           initialDelaySeconds: 120
+#           periodSeconds: 10
+#           timeoutSeconds: 1
+#           successThreshold: 1
+#           failureThreshold: 3
+#         readinessProbe:
+#           exec:
+#             command: ["sh", "-c", "exec mysqladmin status -uroot -p$MARIADB_ROOT_PASSWORD"]
+#           initialDelaySeconds: 30
+#           periodSeconds: 10
+#           timeoutSeconds: 1
+#           successThreshold: 1
+#           failureThreshold: 3
+#         resources:
+#           requests:
+#             cpu: 100m
+#             memory: 100Mi
+#           limits:
+#             cpu: 500m
+#             memory: 1Gi
+#         ports:
+#         - containerPort: 3306
+#         volumeMounts:
+#           - name: mariadb-config
+#             mountPath: /opt/bitnami/mariadb/conf/my.cnf
+#             subPath: my.cnf
+#           - name: vol-tmp
+#             mountPath: /tmp
+#           - name: vol-bitnami-tmp
+#             mountPath: /opt/bitnami/mariadb/tmp
+#           - name: vol-bitnami-logs
+#             mountPath: /opt/bitnami/mariadb/logs
+#           - name: vol-bitnami-conf
+#             mountPath: /opt/bitnami/mariadb/conf
+#           - name: vol-bitnami-data
+#             mountPath: /bitnami/mariadb/data
+#       volumes:
+#         - name: mariadb-config
+#           configMap:
+#             defaultMode: 420
+#             name: mariadb-config
+#         - name: vol-tmp
+#           emptyDir: {}
+#         - name: vol-bitnami-logs
+#           emptyDir: {}
+#         - name: vol-bitnami-tmp
+#           emptyDir: {}
+#         - name: vol-bitnami-conf
+#           emptyDir: {}
+#         - name: vol-bitnami-data
+#           emptyDir: {}
+#         # - name: vol-bitnami-data
+#         #   persistentVolumeClaim:
+#         #     claimName: mariadb-persistent-storage
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: wordpress-mariadb
+#   labels:
+#     app: wordpress
+# spec:
+#   ports:
+#     - port: 3306
+#   selector:
+#     app: wordpress
+#     tier: mariadb
