@@ -3,8 +3,6 @@
 # kubectl patch pod/wordpress-fe-5fcbf7f649-nx79w -p '{"metadata":{"finalizers":null}}'
 # find $1 -type f -exec stat --format '%Y :%y %n' "{}" \; | sort -nr | cut -d: -f2- | head
 
-
-
 #############################################################################
 # Wordpress
 #############################################################################
@@ -15,7 +13,7 @@ metadata:
   labels:
     app: wordpress-fe
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: wordpress
@@ -27,6 +25,21 @@ spec:
       labels:
         app: wordpress
         tier: frontend
+
+        # Mandatory labels:
+        # - May only contain [-a-zA-Z0-9_.]
+        # - "@" should be exchanged by _AT_
+        # - Spaces not allowed
+        psp: 9999.P99999.999.99
+        owner: tbd
+        ownerinfo: tbd_AT_example.com
+        classification: low
+        assetoperator: "TBD"
+        assetuser: tbd
+        softwareversion: "tbd"
+        protectionresponsible: tbd
+        protectionresponsibleinfo: tbd_AT_example.com
+        riskfactor: low
     spec:
       securityContext:
         runAsUser: 1001
@@ -102,8 +115,7 @@ spec:
           #     curl -s http://localhost:8080/ > /dev/null && EXIT_STATUS=$?;
           #     echo $EXIT_STATUS
           # ---
-          # initialDelaySeconds: 600
-          initialDelaySeconds: 120
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 2
           successThreshold: 1
@@ -127,7 +139,6 @@ spec:
           #     curl -s http://localhost:8080/ > /dev/null && EXIT_STATUS=$?;
           #     echo $EXIT_STATUS
           # ---
-          # initialDelaySeconds: 300
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 2
@@ -161,39 +172,39 @@ spec:
         - name: vol-bitnami-data
           persistentVolumeClaim:
             claimName: wordpress-persistent-storage
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: wordpress-fe
-#   labels:
-#     app: wordpress-fe
-# spec:
-#   ports:
-#     - name: http
-#       port: 80
-#       protocol: TCP
-#       targetPort: 8080
-#     - name: https
-#       port: 84
-#       protocol: TCP
-#       targetPort: 8443
-#   selector:
-#     app: wordpress
-#     tier: frontend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-fe
+  labels:
+    app: wordpress-fe
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    - name: https
+      port: 84
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    app: wordpress
+    tier: frontend
 
-# ---
+---
 # apiVersion: extensions/v1beta1
 # kind: Ingress
 # metadata:
-#   name: wordpress-ingress
+#   name: ingress-dev
 #   annotations:
 #     kubernetes.io/ingress.class: "azure/application-gateway"
 #     appgw.ingress.kubernetes.io/appgw-ssl-certificate: "AzureCrossLogicConsulting"
 #     appgw.ingress.kubernetes.io/ssl-redirect: "true"
 # spec:
 #   rules:
-#   - host: "wordpress-dev.azure.crosslogic-consulting.com"
+#   - host: "ingress-dev.azure.crosslogic-consulting.com"
 #     http:
 #       paths:
 #       - path: /
@@ -202,56 +213,78 @@ spec:
 #           servicePort: 80
 ---
 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-dev
+  annotations:
+    kubernetes.io/ingress.class: "azure/application-gateway"
+    appgw.ingress.kubernetes.io/appgw-ssl-certificate: "AzureCrossLogicConsulting"
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+  - host: "ingress-dev.azure.crosslogic-consulting.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wordpress-fe
+            port:
+              number: 80
+---
+
 
 #############################################################################
 # MariaDB
 #############################################################################
-# apiVersion: v1
-# data:
-#   my.cnf: |
-#     [mysqld]
-#     skip_name_resolve
-#     explicit_defaults_for_timestamp
-#     basedir=/opt/bitnami/mariadb
-#     port=3306
-#     tmpdir=/opt/bitnami/mariadb/tmp
-#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
-#     pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
-#     max_allowed_packet=16M
-#     bind_address=0.0.0.0
-#     log_error=/opt/bitnami/mariadb/logs/mysqld.log
-#     character_set_server=utf8
-#     collation_server=utf8_general_ci
-#     plugin_dir=/opt/bitnami/mariadb/plugin
+apiVersion: v1
+data:
+  my.cnf: |
+    [mysqld]
+    skip_name_resolve
+    explicit_defaults_for_timestamp
+    basedir=/opt/bitnami/mariadb
+    port=3306
+    tmpdir=/opt/bitnami/mariadb/tmp
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
+    max_allowed_packet=16M
+    bind_address=0.0.0.0
+    log_error=/opt/bitnami/mariadb/logs/mysqld.log
+    character_set_server=utf8
+    collation_server=utf8_general_ci
+    plugin_dir=/opt/bitnami/mariadb/plugin
 
-#     [client]
-#     port=3306
-#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
-#     default_character_set=UTF8
-#     plugin_dir=/opt/bitnami/mariadb/plugin
+    [client]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    default_character_set=UTF8
+    plugin_dir=/opt/bitnami/mariadb/plugin
 
-#     [manager]
-#     port=3306
-#     socket=/opt/bitnami/mariadb/tmp/mysql.sock
-#     pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
-# kind: ConfigMap
-# metadata:
-#   creationTimestamp: null
-#   labels:
-#     app: mariadb
-#   name: mariadb-config
+    [manager]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    pid_file=/opt/bitnami/mariadb/tmp/mysqld.pid
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app: mariadb
+  name: mariadb-config
 
-# ---
-# # echo -n "<secret>" | openssl base64 -A
-# apiVersion: v1
-# kind: Secret
-# metadata:
-#   name: mariadb-pass
-# type: Opaque
-# data:
-#   WORDPRESS_PASSWORD: YWRtaW4= # admin
-#   MARIADB_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
-#   MARIADB_ROOT_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
+---
+# echo -n "<secret>" | openssl base64 -A
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb-pass
+type: Opaque
+data:
+  WORDPRESS_PASSWORD: YWRtaW4= # admin
+  MARIADB_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
+  MARIADB_ROOT_PASSWORD: YWRtaW4tc2VjcmV0 # admin-secret
 
 ---
 apiVersion: apps/v1
@@ -272,6 +305,21 @@ spec:
       labels:
         app: wordpress
         tier: mariadb
+
+        # Mandatory labels:
+        # - May only contain [-a-zA-Z0-9_.]
+        # - "@" should be exchanged by _AT_
+        # - Spaces not allowed
+        psp: 9999.P99999.999.99
+        owner: tbd
+        ownerinfo: tbd_AT_example.com
+        classification: low
+        assetoperator: "TBD"
+        assetuser: tbd
+        softwareversion: "tbd"
+        protectionresponsible: tbd
+        protectionresponsibleinfo: tbd_AT_example.com
+        riskfactor: low
     spec:
       securityContext:
         runAsUser: 1001
@@ -380,15 +428,15 @@ spec:
             claimName: mariadb-persistent-storage
 
 ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: wordpress-mariadb
-#   labels:
-#     app: wordpress
-# spec:
-#   ports:
-#     - port: 3306
-#   selector:
-#     app: wordpress
-#     tier: mariadb
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-mariadb
+  labels:
+    app: wordpress
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: wordpress
+    tier: mariadb
