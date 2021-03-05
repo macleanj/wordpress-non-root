@@ -9,6 +9,7 @@ spec:
     - ReadWriteMany
     # - ReadWriteOnce
   storageClassName: mgt-k8s-file-standard-delete
+  # storageClassName: default
   # storageClassName: mgt-k8s-file-standard-delete-1001 # Needs to be mounted with mountOptions "uid=1001", "gid=1001".....
   # storageClassName: mgt-k8s-file-premium-delete-1001 # Needs to be mounted with mountOptions "uid=1001", "gid=1001".....
   resources:

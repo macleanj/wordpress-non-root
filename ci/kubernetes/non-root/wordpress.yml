@@ -33,6 +33,7 @@ spec:
         psp: 9999.P99999.999.99
         owner: tbd
         ownerinfo: tbd_AT_example.com
+        codesource: tbd
         classification: low
         assetoperator: "TBD"
         assetuser: tbd
@@ -313,6 +314,7 @@ spec:
         psp: 9999.P99999.999.99
         owner: tbd
         ownerinfo: tbd_AT_example.com
+        codesource: tbd
         classification: low
         assetoperator: "TBD"
         assetuser: tbd
