@@ -17,17 +17,17 @@ spec:
       storage: 4Gi
       # storage: 100Gi
 
-# ---
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: mariadb-persistent-storage
-#   labels:
-#     app: wordpress
-# spec:
-#   accessModes:
-#     - ReadWriteOnce
-#   storageClassName: mgt-k8s-disk-standard-delete
-#   resources:
-#     requests:
-#       storage: 4Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mariadb-persistent-storage
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: mgt-k8s-disk-standard-delete
+  resources:
+    requests:
+      storage: 4Gi
